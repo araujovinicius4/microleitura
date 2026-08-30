@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Microleitura",
+  "version": "0.5.0",
+  "description": "Microleitura para páginas web, ChatGPT e PDFs: Lido, Entendido, Revisar e Importante/Dúvida.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Microleitura",
+    "default_popup": "popup.html"
+  }
+}

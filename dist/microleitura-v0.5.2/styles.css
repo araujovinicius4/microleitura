@@ -1,0 +1,183 @@
+.microleitura-chunk {
+  cursor: pointer;
+  border-radius: 0.3em;
+  transition: opacity 140ms ease, background-color 140ms ease, outline-color 140ms ease;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.microleitura-chunk:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.microleitura-chunk.microleitura-read {
+  opacity: 0.4;
+  text-decoration: none;
+}
+
+.microleitura-chunk.microleitura-read:hover {
+  opacity: 0.66;
+}
+
+.microleitura-chunk.microleitura-current:not(.microleitura-read) {
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.microleitura-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  margin: 0 0 0.75rem 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.72;
+  user-select: none;
+}
+
+.microleitura-progress:hover {
+  opacity: 1;
+}
+
+.microleitura-progress-label {
+  font-weight: 600;
+}
+
+.microleitura-progress-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.microleitura-continue,
+.microleitura-review {
+  appearance: none;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  background: transparent;
+  color: inherit;
+  padding: 0 0 0 0.55rem;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.microleitura-continue:hover,
+.microleitura-review:hover {
+  text-decoration: underline;
+}
+
+.microleitura-pulse {
+  animation: microleitura-pulse 900ms ease;
+}
+
+@keyframes microleitura-pulse {
+  0%, 100% { background: transparent; }
+  45% { background: color-mix(in srgb, currentColor 14%, transparent); }
+}
+
+/* v0.3 — marcações por cor */
+.microleitura-chunk[data-microleitura-mark="gray"] {
+  opacity: 0.4;
+}
+
+.microleitura-chunk[data-microleitura-mark="green"] {
+  background: rgba(34, 197, 94, 0.22);
+  box-shadow: inset 0 -0.55em 0 rgba(34, 197, 94, 0.16);
+}
+
+.microleitura-chunk[data-microleitura-mark="yellow"] {
+  background: rgba(234, 179, 8, 0.25);
+  box-shadow: inset 0 -0.55em 0 rgba(234, 179, 8, 0.17);
+}
+
+.microleitura-chunk[data-microleitura-mark="red"] {
+  background: rgba(239, 68, 68, 0.20);
+  box-shadow: inset 0 -0.55em 0 rgba(239, 68, 68, 0.14);
+}
+
+.microleitura-palette {
+  position: absolute;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+}
+
+.microleitura-color-button,
+.microleitura-clear-button {
+  appearance: none;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(127,127,127,0.35);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.microleitura-color-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 28px;
+  padding: 0 9px 0 7px;
+  background: Canvas;
+  color: CanvasText;
+  font: 500 12px/1 system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+.microleitura-color-dot {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+}
+
+.microleitura-color-button[data-mark="gray"] .microleitura-color-dot { background: #9ca3af; }
+.microleitura-color-button[data-mark="green"] .microleitura-color-dot { background: #22c55e; }
+.microleitura-color-button[data-mark="yellow"] .microleitura-color-dot { background: #eab308; }
+.microleitura-color-button[data-mark="red"] .microleitura-color-dot { background: #ef4444; }
+
+.microleitura-color-button:hover,
+.microleitura-color-button.is-active {
+  border-color: CanvasText;
+  background: color-mix(in srgb, CanvasText 7%, Canvas);
+}
+
+.microleitura-clear-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: CanvasText;
+  font: 18px/1 system-ui, sans-serif;
+  border: 1px solid rgba(127,127,127,0.35);
+}
+
+.microleitura-clear-button:hover {
+  background: rgba(127,127,127,0.12);
+}
+
+
+.microleitura-review-focus {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  animation: microleitura-review-focus 1100ms ease;
+}
+
+@keyframes microleitura-review-focus {
+  0%, 100% { outline-offset: 3px; }
+  45% { outline-offset: 6px; }
+}

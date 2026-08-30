@@ -1,0 +1,35 @@
+:root { color-scheme: light dark; --toolbar-height: 52px; }
+* { box-sizing: border-box; }
+html { background: #525659; }
+body { margin: 0; font: 14px/1.4 system-ui, sans-serif; }
+.toolbar { position: sticky; top: 0; z-index: 1000; min-height: var(--toolbar-height); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: rgba(24, 24, 27, .96); color: #fff; box-shadow: 0 2px 8px #0005; }
+.toolbar strong { margin-right: auto; }
+.viewer-identity { color: #bfdbfe; font-size: 12px; white-space: nowrap; }
+.toolbar button { border: 1px solid #ffffff35; border-radius: 999px; padding: 7px 12px; background: #ffffff10; color: inherit; cursor: pointer; }
+.toolbar button:disabled { opacity: .4; cursor: default; }
+#viewer { padding: 20px 8px 48px; }
+.page { --user-unit: 1; --total-scale-factor: calc(var(--scale-factor) * var(--user-unit)); --scale-round-x: 1px; --scale-round-y: 1px; position: relative; direction: ltr; margin: 0 auto 18px; background: white; box-shadow: 0 2px 12px #0007; overflow: hidden; }
+.page canvas { position: absolute; inset: 0; display: block; }
+.textLayer { --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); position: absolute; z-index: 1; inset: 0; overflow: clip; line-height: 1; letter-spacing: normal; word-spacing: normal; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; }
+.textLayer span, .textLayer br { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; user-select: text; }
+.textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+.textLayer .markedContent { display: contents; }
+.textLayer ::selection { background: rgba(0, 100, 255, .32); }
+.textLayer .ml-pdf-segment { cursor: pointer; border-radius: 3px; transition: background-color .14s, outline-color .14s, opacity .14s; }
+.textLayer .ml-pdf-segment:hover { background: rgba(37,99,235,.13); }
+.textLayer .ml-pdf-segment[data-mark="gray"] { background: rgba(107,114,128,.20); opacity: .58; }
+.textLayer .ml-pdf-segment[data-mark="green"] { background: rgba(34,197,94,.25); box-shadow: inset 0 -4px rgba(34,197,94,.18); }
+.textLayer .ml-pdf-segment[data-mark="yellow"] { background: rgba(234,179,8,.30); box-shadow: inset 0 -4px rgba(234,179,8,.20); }
+.textLayer .ml-pdf-segment[data-mark="red"] { background: rgba(239,68,68,.27); box-shadow: inset 0 -4px rgba(239,68,68,.17); }
+.textLayer .ml-pdf-segment.current { outline: 2px solid rgba(37,99,235,.6); outline-offset: 2px; }
+.textLayer .ml-pdf-segment.focus { animation: focus 1.1s ease; outline: 3px solid #2563eb; outline-offset: 4px; }
+.ml-debug .textLayer .ml-pdf-segment { outline: 1px dashed #2563eb; outline-offset: 1px; }
+#debug-metrics { flex-basis: 100%; padding-top: 2px; font: 11px/1.3 ui-monospace, monospace; color: #bfdbfe; white-space: pre-wrap; overflow-wrap: anywhere; }
+@keyframes focus { 50% { outline-offset: 8px; } }
+.palette { position: fixed; z-index: 2000; display: flex; gap: 6px; padding: 7px; border: 1px solid #7f7f7f55; border-radius: 999px; background: Canvas; color: CanvasText; box-shadow: 0 8px 28px #0005; }
+.palette button { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; border: 1px solid #7f7f7f66; border-radius: 999px; background: Canvas; color: CanvasText; font: 500 12px system-ui; cursor: pointer; }
+.palette button.active { border-color: CanvasText; }
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+[data-mark="gray"] .dot { background: #9ca3af; } [data-mark="green"] .dot { background: #22c55e; } [data-mark="yellow"] .dot { background: #eab308; } [data-mark="red"] .dot { background: #ef4444; }
+.error { max-width: 680px; margin: 80px auto; padding: 20px; border-radius: 12px; background: #fff; color: #222; box-shadow: 0 4px 24px #0005; white-space: pre-line; }
+@media (max-width: 560px) { .toolbar { flex-wrap: wrap; } .toolbar strong { width: 100%; } .palette { max-width: calc(100vw - 16px); overflow-x: auto; border-radius: 12px; } }

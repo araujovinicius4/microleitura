@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF — Microleitura</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <header class="toolbar">
+    <strong>Microleitura</strong>
+    <span id="progress">Carregando…</span>
+    <button id="continue" type="button" disabled>Continuar</button>
+    <button id="review" type="button" disabled>Revisar (0)</button>
+  </header>
+  <main id="viewer" aria-live="polite"></main>
+  <div id="error" class="error" hidden></div>
+  <script type="module" src="viewer.js"></script>
+</body>
+</html>
