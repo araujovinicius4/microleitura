@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microleitura PDF</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <header class="toolbar">
+    <strong>MICROLEITURA</strong>
+    <span class="viewer-identity">Visualizador Microleitura PDF</span>
+    <span id="progress">Carregando PDF...</span>
+    <button id="continue" type="button" disabled>Continuar</button>
+    <button id="review" type="button" disabled>Revisar (0)</button>
+    <button id="open-original" type="button">Abrir PDF original</button>
+    <button id="debug-toggle" type="button" aria-pressed="false">Debug de microtrechos</button>
+    <span id="debug-metrics" hidden></span>
+  </header>
+  <main id="viewer" aria-live="polite"></main>
+  <div id="error" class="error" hidden></div>
+  <script type="module" src="viewer.js"></script>
+</body>
+</html>
