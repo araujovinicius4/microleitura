@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Microleitura v0.6.0
 
 A v0.6.0 adiciona execução independente em frames HTTP/HTTPS, incluindo o
@@ -12,9 +11,6 @@ Tokens da query não são armazenados nessa chave. Documentos com texto idêntic
 compartilham identidade; alterações textuais geram outra identidade. O isolamento
 absoluto por documento depende da confirmação desse identificador.
 Consulte [VALIDACAO-v0.6.0.md](VALIDACAO-v0.6.0.md) para resultados e limites.
-=======
-# Microleitura v0.5.7
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
 
 Extensão Chrome (Manifest V3) para dividir textos em microtrechos, marcar a leitura e retomar exatamente onde você parou. Funciona no ChatGPT, em artigos/páginas web e agora também em PDFs por meio de um visualizador próprio baseado no Mozilla PDF.js.
 
@@ -25,11 +21,7 @@ Todo o processamento e armazenamento acontecem localmente no navegador. A extens
 1. Descompacte o ZIP, se necessário.
 2. Abra `chrome://extensions` no Chrome.
 3. Ative **Modo do desenvolvedor**.
-<<<<<<< HEAD
 4. Clique em **Carregar sem compactação** e selecione a pasta `microleitura-v0.6.0` (a pasta que contém `manifest.json`).
-=======
-4. Clique em **Carregar sem compactação** e selecione a pasta `microleitura-v0.5.7` (a pasta que contém `manifest.json`).
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
 5. Para atualizar uma instalação carregada da mesma pasta, substitua os arquivos e clique em **Recarregar** no cartão da extensão.
 6. Recarregue as páginas que já estavam abertas.
 

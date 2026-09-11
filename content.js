@@ -11,10 +11,7 @@
   const MARKS = ['gray', 'green', 'yellow', 'red'];
   const MAX_CHARS = 190;
   const MAX_SENTENCES = 2;
-<<<<<<< HEAD
   const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"]';
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
   const INTERACTIVE_SELECTOR = [
     'a', 'area', 'button', 'input', 'textarea', 'select', 'option', 'summary', 'label',
     'audio[controls]', 'video[controls]', 'iframe', 'object', 'embed',
@@ -27,7 +24,6 @@
 
   const normalize = (text) => (text || '').replace(/\s+/g, ' ').trim();
 
-<<<<<<< HEAD
   function isEditableElement(target) {
     const element = target instanceof Element ? target : target?.parentElement;
     return Boolean(document.designMode === 'on' || element?.isContentEditable || element?.closest(EDITABLE_SELECTOR));
@@ -40,8 +36,6 @@
     );
   }
 
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
   function isInteractiveTarget(target) {
     const element = target instanceof Element ? target : target?.parentElement;
     return Boolean(element?.closest(INTERACTIVE_SELECTOR));
@@ -62,7 +56,6 @@
   }
 
   function conversationKey() {
-<<<<<<< HEAD
     return `${STORAGE_PREFIX}${location.origin}${location.pathname}${isChatGPT() ? '' : location.search}`;
   }
 
@@ -105,23 +98,12 @@
       const aliases = Object.keys(all).filter((name) => name.startsWith(key + '?')).sort();
       result[key] = Object.assign({}, ...aliases.map((name) => all[name]), result[key] || {});
     }
-=======
-    return `${STORAGE_PREFIX}${location.origin}${location.pathname}${location.search}`;
-  }
-
-  async function loadMarkState() {
-    const key = conversationKey();
-    const result = await chrome.storage.local.get(key);
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     if (result[key] && typeof result[key] === 'object' && !Array.isArray(result[key])) {
       return new Map(Object.entries(result[key]));
     }
 
     // Migrate v0.2.x "read" entries to gray marks.
-<<<<<<< HEAD
     if (frameContext.sei) return new Map();
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     const legacyKey = `${LEGACY_STORAGE_PREFIX}${location.pathname}`;
     const legacy = await chrome.storage.local.get(legacyKey);
     const migrated = new Map((legacy[legacyKey] || []).map((id) => [id, 'gray']));
@@ -130,11 +112,7 @@
   }
 
   async function saveMarkState(markMap) {
-<<<<<<< HEAD
     const key = stateKeys.get(markMap) || conversationKey();
-=======
-    const key = conversationKey();
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     await chrome.storage.local.set({ [key]: Object.fromEntries(markMap) });
   }
 
@@ -170,13 +148,10 @@
   }
 
   function getGenericRoots() {
-<<<<<<< HEAD
     if (frameContext.seiDocument || (!frameContext.top && frameContext.frameId === 'ifrArvoreHtml')) {
       return document.body && candidateBlocks(document.body).some(el => normalize(el.textContent).length >= 12)
         ? [document.body] : [];
     }
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     // Prefer semantic article containers. On listing pages, each article gets
     // its own progress/review controls.
     const articles = [...document.querySelectorAll('article')].filter((el) => {
@@ -196,30 +171,23 @@
 
     // Last-resort fallback for simple pages.
     const body = document.body;
-<<<<<<< HEAD
     const paragraphs = body && [...body.querySelectorAll('p')].filter(el =>
       !isEditableElement(el) && !el.closest('nav, header, footer, aside, form, [role="navigation"], [role="tree"], [role="menu"]') &&
       !el.querySelector('button, input, textarea') && normalize(el.textContent).length >= 40);
     return body && paragraphs.length >= (frameContext.top ? 1 : 2) &&
       paragraphs.reduce((sum, el) => sum + normalize(el.textContent).length, 0) >= (frameContext.top ? 300 : 180) ? [body] : [];
-=======
-    return body && normalize(body.innerText).length >= 300 ? [body] : [];
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
   }
 
   function getMessageRoots() {
     return isChatGPT() ? getChatGPTRoots() : getGenericRoots();
   }
 
-<<<<<<< HEAD
   function readableIdentityText(root) {
     return normalize(textNodeMap(root).map((entry) => entry.node.nodeValue).join(''));
   }
 
   const blockTexts = new WeakMap();
 
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
   function messageFingerprint(root) {
     const text = normalize(root.innerText).slice(0, 800);
     return hashString(text);
@@ -227,15 +195,10 @@
 
   function eligibleBlock(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-<<<<<<< HEAD
     if (isEditableElement(el)) return false;
     if (el.hasAttribute(PROCESSED)) return false;
     if (el.closest(`.${BAR_CLASS}, pre, button, textarea, input, nav, header, footer, aside, form, [role="navigation"], [role="tree"], [role="menu"]`)) return false;
     if (frameContext.top && !frameContext.seiDocument && el.closest('table')) return false;
-=======
-    if (el.hasAttribute(PROCESSED)) return false;
-    if (el.closest(`.${BAR_CLASS}, pre, table, button, textarea, input, nav, header, footer, aside, form, [role=\"navigation\"]`)) return false;
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     if (el.querySelector('pre, table, form')) return false;
 
     const text = normalize(el.textContent);
@@ -299,16 +262,10 @@
     let offset = 0;
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
-<<<<<<< HEAD
         if (isEditableElement(node)) return NodeFilter.FILTER_REJECT;
         if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
         const parent = node.parentElement;
         if (!parent || parent.closest(`.${BAR_CLASS}, .${PALETTE_CLASS}, script, style, noscript, nav, header, footer, aside, form, [role="navigation"], [role="tree"], [role="menu"], pre, code, button, textarea, input`)) {
-=======
-        if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
-        const parent = node.parentElement;
-        if (!parent || parent.closest(`.${BAR_CLASS}, pre, code, button, textarea, input`)) {
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
           return NodeFilter.FILTER_REJECT;
         }
         return NodeFilter.FILTER_ACCEPT;
@@ -325,17 +282,11 @@
   }
 
   function uncoveredTextNodes(block) {
-<<<<<<< HEAD
     if (isEditableElement(block)) return [];
     const nodes = [];
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (isEditableElement(node)) return NodeFilter.FILTER_REJECT;
-=======
-    const nodes = [];
-    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
         if (!normalize(node.nodeValue)) return NodeFilter.FILTER_REJECT;
         const parent = node.parentElement;
         if (!parent || parent.closest(`.${CHUNK_CLASS}, .${BAR_CLASS}, pre, code, button, textarea, input`)) {
@@ -351,15 +302,10 @@
   }
 
   function repairUncoveredText(block, root, markMap, fingerprint) {
-<<<<<<< HEAD
     if (isEditableElement(block)) return 0;
     const nodes = uncoveredTextNodes(block);
     for (const node of nodes) {
       if (isEditableElement(node) || containsActiveEditor(node)) continue;
-=======
-    const nodes = uncoveredTextNodes(block);
-    for (const node of nodes) {
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
       const rawText = node.nodeValue || '';
       const ranges = microRanges(rawText);
       for (let i = ranges.length - 1; i >= 0; i--) {
@@ -397,11 +343,8 @@
   }
 
   function wrapRange(block, rangeInfo, chunkId, markMap) {
-<<<<<<< HEAD
     // A cross-node Range could extract an editor between two readable nodes.
     if (isEditableElement(block) || block.querySelector(EDITABLE_SELECTOR) || containsActiveEditor(block)) return null;
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     const entries = textNodeMap(block);
     const start = locate(entries, rangeInfo.start, false);
     const end = locate(entries, rangeInfo.end, true);
@@ -430,11 +373,7 @@
   }
 
   function getChunks(root) {
-<<<<<<< HEAD
     return [...root.querySelectorAll(`.${CHUNK_CLASS}`)].filter((span) => !isEditableElement(span));
-=======
-    return [...root.querySelectorAll(`.${CHUNK_CLASS}`)];
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
   }
 
   function ensureProgressBar(root) {
@@ -487,10 +426,7 @@
   }
 
   function updateProgress(root) {
-<<<<<<< HEAD
     if (!isChatGPT()) root = document.body;
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     const chunks = getChunks(root);
     if (!chunks.length) return;
 
@@ -578,11 +514,7 @@
       event.stopPropagation();
       const id = span.dataset.microleituraId;
       applyMark(span, null);
-<<<<<<< HEAD
       markMap.set(id, null);
-=======
-      markMap.delete(id);
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
       updateProgress(root);
       closePalette();
       await saveMarkState(markMap);
@@ -626,7 +558,6 @@
   }
 
   function candidateBlocks(root) {
-<<<<<<< HEAD
     if (isEditableElement(root)) return [];
     const selector = isChatGPT()
       ? 'p, li, blockquote, h1, h2, h3, h4, h5, h6'
@@ -634,13 +565,6 @@
     const standard = [...root.querySelectorAll(selector)].filter((el) =>
       !el.closest('nav, header, footer, aside, form, [role="navigation"], [role="tree"], [role="menu"]') &&
       (!el.matches('td, th') || !el.querySelector('p, blockquote, h1, h2, h3, h4, table'))
-=======
-    const selector = isChatGPT()
-      ? 'p, li, blockquote, h1, h2, h3, h4, h5, h6'
-      : 'p, blockquote, h1, h2, h3, h4';
-    const standard = [...root.querySelectorAll(selector)].filter((el) =>
-      !el.closest('nav, header, footer, aside, form, [role="navigation"]')
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     );
 
     // Important: sometimes the element carrying data-message-author-role is itself
@@ -672,7 +596,6 @@
       return !childDivWithText || directReadableTextLength(el) >= 12;
     });
 
-<<<<<<< HEAD
     return [...new Set([...standard, ...fallbackDivs])].filter((el) => !isEditableElement(el));
   }
 
@@ -687,18 +610,10 @@
       seenBefore.set(text, occurrence + 1);
       previous.set(text + '|' + occurrence, span.getAttribute(MARK_ATTR));
     });
-=======
-    return [...new Set([...standard, ...fallbackDivs])];
-  }
-
-  function processRoot(root, markMap) {
-    const fingerprint = messageFingerprint(root);
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     const blocks = candidateBlocks(root);
     let blockNumber = 0;
 
     for (const block of blocks) {
-<<<<<<< HEAD
       // Reconcile only changed reading blocks, so streaming and a clean load
       // use the same sentence boundaries. Never unwrap or move an editor.
       const blockText = readableIdentityText(block);
@@ -708,15 +623,12 @@
         block.normalize();
         block.removeAttribute(PROCESSED);
       }
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
       if (block.hasAttribute(PROCESSED)) {
         repairUncoveredText(block, root, markMap, fingerprint);
         continue;
       }
       if (!eligibleBlock(block)) continue;
 
-<<<<<<< HEAD
       // Repair individual readable nodes without moving embedded editors.
       if (block.querySelector(EDITABLE_SELECTOR) || containsActiveEditor(block)) {
         block.setAttribute(PROCESSED, 'true');
@@ -724,8 +636,6 @@
         continue;
       }
 
-=======
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
       const rawText = block.textContent || '';
       const ranges = microRanges(rawText);
       if (!ranges.length) continue;
@@ -744,7 +654,6 @@
       blockNumber++;
     }
 
-<<<<<<< HEAD
     blocks.forEach((block) => blockTexts.set(block, readableIdentityText(block)));
     // Identity contains reading text only: no innerText layout, controls or wrappers.
     const rootText = readableIdentityText(root);
@@ -777,14 +686,10 @@
       bindChunk(span, root, markMap);
     });
     if (migrated) void saveMarkState(markMap);
-=======
-    getChunks(root).forEach((span) => bindChunk(span, root, markMap));
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     if (getChunks(root).length) updateProgress(root);
   }
 
   let markMap = null;
-<<<<<<< HEAD
   let activeKey = null;
   let processing = false;
   function resetReadingContext() {
@@ -824,17 +729,6 @@
       if (document.designMode.toLowerCase() !== 'on' && !isEditableElement(document.body)) {
         getMessageRoots().forEach(root => observer.observe(root, { childList: true, subtree: true, characterData: true }));
       }
-=======
-  let processing = false;
-  async function processPage() {
-    if (processing) return;
-    processing = true;
-    try {
-      if (!markMap) markMap = await loadMarkState();
-      getMessageRoots().forEach((root) => processRoot(root, markMap));
-    } finally {
-      processing = false;
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     }
   }
 
@@ -849,27 +743,18 @@
   });
 
   const observer = new MutationObserver((mutations) => {
-<<<<<<< HEAD
     // Typing must not schedule reading repairs; response streaming still does.
-=======
-    // Ignore mutations created only by our own progress UI/classes.
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     const external = mutations.some((mutation) => {
       const target = mutation.target.nodeType === Node.ELEMENT_NODE
         ? mutation.target
         : mutation.target.parentElement;
-<<<<<<< HEAD
       return !isEditableElement(target) && !target?.closest?.(`.${BAR_CLASS}, .${PALETTE_CLASS}`) &&
         !(mutation.type === 'childList' && [...mutation.addedNodes, ...mutation.removedNodes].length && [...mutation.addedNodes, ...mutation.removedNodes].every(node =>
           node.nodeType === Node.ELEMENT_NODE && node.matches(`.${BAR_CLASS}, .${PALETTE_CLASS}`)));
-=======
-      return !target?.closest?.(`.${BAR_CLASS}`);
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
     });
     if (external) scheduleProcess();
   });
 
-<<<<<<< HEAD
   let lastPath = location.pathname + location.search;
   let lastRoots = [];
   setInterval(() => {
@@ -877,15 +762,6 @@
     if (location.pathname + location.search !== lastPath || roots.length !== lastRoots.length || roots.some((root, index) => root !== lastRoots[index])) {
       lastPath = location.pathname + location.search;
       lastRoots = roots;
-=======
-  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-
-  let lastPath = location.pathname;
-  setInterval(() => {
-    if (location.pathname !== lastPath) {
-      lastPath = location.pathname;
-      markMap = null;
->>>>>>> 6e34028b09ddb4a480d5c46eaf9aa58b8f04778e
       scheduleProcess();
     }
   }, 800);
