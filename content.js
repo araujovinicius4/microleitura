@@ -129,14 +129,49 @@
   }
 
   function getChatGPTRoots() {
-    const direct = [...document.querySelectorAll(
-      '[data-message-author-role="assistant"], [data-message-author-role="user"]'
-    )];
-    if (direct.length) return direct;
+    // ChatGPT atual: prioriza o atributo semântico observado no DOM real.
+    // Não depende das classes geradas MarkdownRoot-* / Paragraph-*.
+    const assistantBodies = [
+      ...document.querySelectorAll('[data-markdown-text-style="assistant-message"]')
+    ].filter((el) => {
+      if (el.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(el) || el.querySelector(EDITABLE_SELECTOR)) return false;
+      return normalize(el.textContent).length >= 1;
+    });
+    if (assistantBodies.length) return [...new Set(assistantBodies)];
 
-    return [...document.querySelectorAll('article')].filter((article) =>
-      article.querySelector('[data-message-author-role="assistant"], [data-message-author-role="user"]')
-    );
+    // Compatibilidade com estruturas anteriores do ChatGPT.
+    const selectorGroups = [
+      '[data-message-author-role="assistant"], [data-message-author-role="user"]',
+      '[data-testid^="conversation-turn"], [data-testid*="conversation-turn"]',
+      '[data-message-id]'
+    ];
+
+    for (const selector of selectorGroups) {
+      const roots = [...document.querySelectorAll(selector)].filter((el) => {
+        if (el.closest('nav, header, footer, aside, form')) return false;
+        if (isEditableElement(el)) return false;
+        return normalize(el.textContent).length >= 12;
+      });
+      if (roots.length) return [...new Set(roots)];
+    }
+
+    const main = document.querySelector('main, [role="main"]') || document.body;
+    const articles = [...main.querySelectorAll('article')].filter((article) => {
+      if (article.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(article) || article.querySelector(EDITABLE_SELECTOR)) return false;
+      const text = normalize(article.textContent);
+      return text.length >= 12 &&
+        Boolean(article.querySelector('p, li, blockquote, h1, h2, h3, h4, h5, h6') ||
+          directReadableTextLength(article) >= 12);
+    });
+    if (articles.length) return articles;
+
+    return [...main.querySelectorAll('[data-testid*="turn"], [class*="conversation-turn"]')].filter((el) => {
+      if (el.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(el) || el.querySelector(EDITABLE_SELECTOR)) return false;
+      return normalize(el.textContent).length >= 12;
+    });
   }
 
   function genericRootScore(el) {
@@ -376,9 +411,87 @@
     return [...root.querySelectorAll(`.${CHUNK_CLASS}`)].filter((span) => !isEditableElement(span));
   }
 
+  function progressBarPositionKey(root) {
+    const identity = normalize(root.textContent).slice(0, 1200);
+    return `${conversationKey()}:progress:${hashString(identity)}`;
+  }
+
+  function clampProgressBarOffset(bar, left, top) {
+    const rect = bar.getBoundingClientRect();
+    const baseLeft = rect.left - (parseFloat(bar.style.left) || 0);
+    const baseTop = rect.top - (parseFloat(bar.style.top) || 0);
+    const minLeft = -baseLeft + 4;
+    const maxLeft = window.innerWidth - baseLeft - rect.width - 4;
+    const minTop = -baseTop + 4;
+    const maxTop = window.innerHeight - baseTop - rect.height - 4;
+    return {
+      left: Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft)),
+      top: Math.min(Math.max(top, minTop), Math.max(minTop, maxTop))
+    };
+  }
+
+  function makeProgressBarDraggable(bar, root) {
+    const handle = bar.querySelector('.microleitura-progress-label');
+    if (!handle || bar.dataset.microleituraDraggable === 'true') return;
+    bar.dataset.microleituraDraggable = 'true';
+    handle.title = 'Arraste para mover a barra Microleitura';
+
+    const positionKey = progressBarPositionKey(root);
+
+    chrome.storage.local.get(positionKey).then((result) => {
+      const saved = result[positionKey];
+      if (!saved || typeof saved.left !== 'number' || typeof saved.top !== 'number') return;
+      bar.style.left = `${saved.left}px`;
+      bar.style.top = `${saved.top}px`;
+      requestAnimationFrame(() => {
+        const bounded = clampProgressBarOffset(bar, saved.left, saved.top);
+        bar.style.left = `${bounded.left}px`;
+        bar.style.top = `${bounded.top}px`;
+      });
+    }).catch(() => {});
+
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const startLeft = parseFloat(bar.style.left) || 0;
+      const startTop = parseFloat(bar.style.top) || 0;
+      let last = { left: startLeft, top: startTop };
+
+      bar.classList.add('microleitura-dragging');
+      handle.setPointerCapture?.(event.pointerId);
+
+      const move = (moveEvent) => {
+        const proposedLeft = startLeft + moveEvent.clientX - startX;
+        const proposedTop = startTop + moveEvent.clientY - startY;
+        last = clampProgressBarOffset(bar, proposedLeft, proposedTop);
+        bar.style.left = `${last.left}px`;
+        bar.style.top = `${last.top}px`;
+      };
+
+      const finish = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', finish);
+        handle.removeEventListener('pointercancel', finish);
+        bar.classList.remove('microleitura-dragging');
+        chrome.storage.local.set({ [positionKey]: last }).catch(() => {});
+      };
+
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', finish);
+      handle.addEventListener('pointercancel', finish);
+    });
+  }
+
   function ensureProgressBar(root) {
     let bar = root.querySelector(`:scope > .${BAR_CLASS}`);
-    if (bar) return bar;
+    if (bar) {
+      makeProgressBarDraggable(bar, root);
+      return bar;
+    }
 
     bar = document.createElement('div');
     bar.className = BAR_CLASS;
@@ -422,6 +535,7 @@
     });
 
     root.insertBefore(bar, root.firstChild);
+    makeProgressBarDraggable(bar, root);
     return bar;
   }
 

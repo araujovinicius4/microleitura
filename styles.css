@@ -1,6 +1,6 @@
 .microleitura-chunk {
   cursor: pointer;
-  border-radius: 0.3em;
+  border-radius: 0;
   transition: opacity 140ms ease, background-color 140ms ease, outline-color 140ms ease;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -38,6 +38,8 @@
 
 .microleitura-progress {
   display: flex;
+  position: relative;
+  z-index: 2147483000;
   align-items: center;
   gap: 0.55rem;
   width: fit-content;
@@ -57,6 +59,17 @@
 
 .microleitura-progress-label {
   font-weight: 600;
+  cursor: grab;
+  touch-action: none;
+}
+
+.microleitura-progress-label:active,
+.microleitura-progress.microleitura-dragging .microleitura-progress-label {
+  cursor: grabbing;
+}
+
+.microleitura-progress.microleitura-dragging {
+  opacity: 1;
 }
 
 .microleitura-progress-count {

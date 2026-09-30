@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Microleitura",
-  "version": "0.6.0",
+  "version": "0.6.4",
   "description": "Microleitura para páginas web, ChatGPT e PDFs: Lido, Entendido, Revisar e Importante/Dúvida.",
   "permissions": [
     "storage",
