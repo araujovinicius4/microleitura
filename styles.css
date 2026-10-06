@@ -1,6 +1,6 @@
 .microleitura-chunk {
   cursor: pointer;
-  border-radius: 0.3em;
+  border-radius: 0;
   transition: opacity 140ms ease, background-color 140ms ease, outline-color 140ms ease;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -38,6 +38,8 @@
 
 .microleitura-progress {
   display: flex;
+  position: relative;
+  z-index: 2147483000;
   align-items: center;
   gap: 0.55rem;
   width: fit-content;
@@ -57,6 +59,17 @@
 
 .microleitura-progress-label {
   font-weight: 600;
+  cursor: grab;
+  touch-action: none;
+}
+
+.microleitura-progress-label:active,
+.microleitura-progress.microleitura-dragging .microleitura-progress-label {
+  cursor: grabbing;
+}
+
+.microleitura-progress.microleitura-dragging {
+  opacity: 1;
 }
 
 .microleitura-progress-count {
@@ -192,4 +205,48 @@
 @keyframes microleitura-review-focus {
   0%, 100% { outline-offset: 3px; }
   45% { outline-offset: 6px; }
+}
+
+.microleitura-summary { white-space: nowrap; }
+
+/* v0.6.7 — painel local de resumo */
+.microleitura-summary-panel{position:fixed;right:20px;bottom:20px;width:min(430px,calc(100vw - 40px));max-height:min(70vh,650px);display:flex;flex-direction:column;z-index:2147483647;background:#fff;color:#202124;border:1px solid #c7c7c7;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22);font-family:Arial,sans-serif;font-size:14px}
+.microleitura-summary-panel-header,.microleitura-summary-panel-footer{display:flex;align-items:center;gap:8px;padding:12px 14px}
+.microleitura-summary-panel-header{justify-content:space-between;border-bottom:1px solid #ddd}
+.microleitura-summary-panel-footer{justify-content:flex-end;border-top:1px solid #ddd}
+.microleitura-summary-panel-body{overflow:auto;padding:12px 14px}
+.microleitura-summary-section{margin:0 0 14px}.microleitura-summary-section h4{margin:0 0 6px;font-size:14px}
+.microleitura-summary-section ul{margin:0;padding-left:20px}.microleitura-summary-section li{margin:0 0 5px}
+.microleitura-summary-close,.microleitura-summary-copy{font:inherit;cursor:pointer}
+.microleitura-summary-close{border:0;background:transparent;font-size:24px;line-height:1;padding:0 4px}
+.microleitura-summary-copy{padding:7px 10px}.microleitura-summary-copy:disabled{cursor:default;opacity:.55}
+
+/* v0.6.8 — preparação da camada de IA */
+.microleitura-summary-ai{padding:7px 10px;font:inherit;cursor:pointer}
+.microleitura-summary-ai:disabled{cursor:default;opacity:.55}
+.microleitura-summary-result{border-top:1px solid #ddd;padding:12px 14px;overflow:auto;white-space:pre-wrap}
+
+/* Tema alternável da barra */
+.microleitura-progress.microleitura-progress-blue {
+  background: #0b5cab !important;
+  color: #fff !important;
+  border-color: #084a8c !important;
+}
+.microleitura-progress.microleitura-progress-blue .microleitura-progress-label,
+.microleitura-progress.microleitura-progress-blue .microleitura-progress-count {
+  color: #fff !important;
+}
+.microleitura-progress.microleitura-progress-blue button {
+  background: #0b5cab !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.8) !important;
+}
+.microleitura-progress.microleitura-progress-blue button:hover {
+  background: #084a8c !important;
+}
+.microleitura-theme-toggle {
+  min-width: 30px;
+  padding-left: 7px !important;
+  padding-right: 7px !important;
+  font-weight: 700;
 }

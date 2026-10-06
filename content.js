@@ -10,7 +10,7 @@
   const LEGACY_STORAGE_PREFIX = 'microleitura:v2:';
   const MARKS = ['gray', 'green', 'yellow', 'red'];
   const MAX_CHARS = 190;
-  const MAX_SENTENCES = 2;
+  const MAX_SENTENCES = 1;
   const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"]';
   const INTERACTIVE_SELECTOR = [
     'a', 'area', 'button', 'input', 'textarea', 'select', 'option', 'summary', 'label',
@@ -55,7 +55,23 @@
     return (hash >>> 0).toString(36);
   }
 
+  function isMicrosoft365Copilot() {
+    return location.hostname === 'm365.cloud.microsoft' && /^\/chat\/conversation\//.test(location.pathname);
+  }
+
+  function microsoft365CopilotConversationId() {
+    if (!isMicrosoft365Copilot()) return '';
+    const match = location.pathname.match(/^\/chat\/conversation\/([^/?#]+)/);
+    return match ? match[1] : '';
+  }
+
   function conversationKey() {
+    // Microsoft 365 Copilot é uma SPA. A query string pode mudar durante o uso,
+    // então usamos somente o ID estável presente em /chat/conversation/<id>.
+    const copilotId = microsoft365CopilotConversationId();
+    if (copilotId) {
+      return `${STORAGE_PREFIX}${location.origin}/chat/conversation/${copilotId}`;
+    }
     return `${STORAGE_PREFIX}${location.origin}${location.pathname}${isChatGPT() ? '' : location.search}`;
   }
 
@@ -129,14 +145,49 @@
   }
 
   function getChatGPTRoots() {
-    const direct = [...document.querySelectorAll(
-      '[data-message-author-role="assistant"], [data-message-author-role="user"]'
-    )];
-    if (direct.length) return direct;
+    // ChatGPT atual: prioriza o atributo semântico observado no DOM real.
+    // Não depende das classes geradas MarkdownRoot-* / Paragraph-*.
+    const assistantBodies = [
+      ...document.querySelectorAll('[data-markdown-text-style="assistant-message"]')
+    ].filter((el) => {
+      if (el.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(el) || el.querySelector(EDITABLE_SELECTOR)) return false;
+      return normalize(el.textContent).length >= 1;
+    });
+    if (assistantBodies.length) return [...new Set(assistantBodies)];
 
-    return [...document.querySelectorAll('article')].filter((article) =>
-      article.querySelector('[data-message-author-role="assistant"], [data-message-author-role="user"]')
-    );
+    // Compatibilidade com estruturas anteriores do ChatGPT.
+    const selectorGroups = [
+      '[data-message-author-role="assistant"], [data-message-author-role="user"]',
+      '[data-testid^="conversation-turn"], [data-testid*="conversation-turn"]',
+      '[data-message-id]'
+    ];
+
+    for (const selector of selectorGroups) {
+      const roots = [...document.querySelectorAll(selector)].filter((el) => {
+        if (el.closest('nav, header, footer, aside, form')) return false;
+        if (isEditableElement(el)) return false;
+        return normalize(el.textContent).length >= 12;
+      });
+      if (roots.length) return [...new Set(roots)];
+    }
+
+    const main = document.querySelector('main, [role="main"]') || document.body;
+    const articles = [...main.querySelectorAll('article')].filter((article) => {
+      if (article.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(article) || article.querySelector(EDITABLE_SELECTOR)) return false;
+      const text = normalize(article.textContent);
+      return text.length >= 12 &&
+        Boolean(article.querySelector('p, li, blockquote, h1, h2, h3, h4, h5, h6') ||
+          directReadableTextLength(article) >= 12);
+    });
+    if (articles.length) return articles;
+
+    return [...main.querySelectorAll('[data-testid*="turn"], [class*="conversation-turn"]')].filter((el) => {
+      if (el.closest('nav, header, footer, aside, form')) return false;
+      if (isEditableElement(el) || el.querySelector(EDITABLE_SELECTOR)) return false;
+      return normalize(el.textContent).length >= 12;
+    });
   }
 
   function genericRootScore(el) {
@@ -376,9 +427,233 @@
     return [...root.querySelectorAll(`.${CHUNK_CLASS}`)].filter((span) => !isEditableElement(span));
   }
 
+  function progressBarPositionKey(root) {
+    const identity = normalize(root.textContent).slice(0, 1200);
+    return `${conversationKey()}:progress:${hashString(identity)}`;
+  }
+
+  function clampProgressBarOffset(bar, root, left, top) {
+    const rect = bar.getBoundingClientRect();
+    const rootRect = root.getBoundingClientRect();
+    const isChatGPTPage = /(^|\.)chatgpt\.com$/.test(location.hostname);
+    const dragRect = isChatGPTPage
+      ? rootRect
+      : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+    const currentLeft = parseFloat(bar.style.left) || 0;
+    const currentTop = parseFloat(bar.style.top) || 0;
+    const baseLeft = rect.left - currentLeft;
+    const baseTop = rect.top - currentTop;
+    const margin = 4;
+
+    // A barra continua pertencendo visualmente ao seu próprio bloco.
+    // Isso impede barras de respostas diferentes de se acumularem na mesma área.
+    const minLeft = dragRect.left + margin - baseLeft;
+    const maxLeft = dragRect.right - margin - rect.width - baseLeft;
+    const minTop = dragRect.top + margin - baseTop;
+    const maxTop = dragRect.bottom - margin - rect.height - baseTop;
+
+    return {
+      left: Math.min(Math.max(left, Math.min(minLeft, maxLeft)), Math.max(minLeft, maxLeft)),
+      top: Math.min(Math.max(top, Math.min(minTop, maxTop)), Math.max(minTop, maxTop))
+    };
+  }
+
+  function makeProgressBarDraggable(bar, root) {
+    const handle = bar.querySelector('.microleitura-progress-label');
+    if (!handle || bar.dataset.microleituraDraggable === 'true') return;
+    bar.dataset.microleituraDraggable = 'true';
+    handle.title = 'Arraste para mover a barra Microleitura';
+
+    const positionKey = progressBarPositionKey(root);
+
+    chrome.storage.local.get(positionKey).then((result) => {
+      const saved = result[positionKey];
+
+      // No ChatGPT, cada conversa começa organizada junto aos respectivos blocos.
+      // A posição continua sendo salva durante a sessão, mas layouts antigos não
+      // são reaplicados cegamente quando a página é reconstruída.
+      if (isChatGPT()) {
+        bar.style.left = '0px';
+        bar.style.top = '0px';
+        return;
+      }
+
+      if (!saved || typeof saved.left !== 'number' || typeof saved.top !== 'number') return;
+      bar.style.left = `${saved.left}px`;
+      bar.style.top = `${saved.top}px`;
+      requestAnimationFrame(() => {
+        const bounded = clampProgressBarOffset(bar, root, saved.left, saved.top);
+        bar.style.left = `${bounded.left}px`;
+        bar.style.top = `${bounded.top}px`;
+      });
+    }).catch(() => {});
+
+    handle.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      bar.style.left = '0px';
+      bar.style.top = '0px';
+      chrome.storage.local.remove(positionKey).catch(() => {});
+    });
+
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const startLeft = parseFloat(bar.style.left) || 0;
+      const startTop = parseFloat(bar.style.top) || 0;
+      let last = { left: startLeft, top: startTop };
+
+      bar.classList.add('microleitura-dragging');
+      handle.setPointerCapture?.(event.pointerId);
+
+      const move = (moveEvent) => {
+        const proposedLeft = startLeft + moveEvent.clientX - startX;
+        const proposedTop = startTop + moveEvent.clientY - startY;
+        last = clampProgressBarOffset(bar, root, proposedLeft, proposedTop);
+        bar.style.left = `${last.left}px`;
+        bar.style.top = `${last.top}px`;
+      };
+
+      const finish = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', finish);
+        handle.removeEventListener('pointercancel', finish);
+        bar.classList.remove('microleitura-dragging');
+        last = clampProgressBarOffset(bar, root, last.left, last.top);
+        bar.style.left = `${last.left}px`;
+        bar.style.top = `${last.top}px`;
+        chrome.storage.local.set({ [positionKey]: last }).catch(() => {});
+      };
+
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', finish);
+      handle.addEventListener('pointercancel', finish);
+    });
+  }
+
+  const SUMMARY_LABELS = {
+    gray: 'Lido',
+    green: 'Entendido',
+    yellow: 'Revisar',
+    red: 'Importante/Dúvida'
+  };
+
+  function collectSummaryData(root) {
+    const groups = { gray: [], green: [], yellow: [], red: [] };
+
+    getChunks(root).forEach((chunk) => {
+      const mark = chunk.getAttribute(MARK_ATTR);
+      const text = normalize(chunk.textContent);
+      if (groups[mark] && text) groups[mark].push(text);
+    });
+
+    const markedCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
+    return { labels: SUMMARY_LABELS, groups, markedCount };
+  }
+
+  function buildSummaryPrompt(summaryData) {
+    if (!summaryData || !summaryData.markedCount) return null;
+    const { labels, groups } = summaryData;
+
+    const sections = MARKS
+      .filter((mark) => groups[mark].length)
+      .map((mark) => `## ${labels[mark]}\n${groups[mark].map((text) => `- ${text}`).join('\n')}`)
+      .join('\n\n');
+
+    return `Gere um resumo de estudo com base nas marcações da minha Microleitura.
+
+Interprete as categorias assim:
+- Lido: contexto geral já percorrido.
+- Entendido: conceitos compreendidos e consolidados.
+- Revisar: conteúdo que preciso retomar.
+- Importante/Dúvida: pontos prioritários, importantes ou que ainda geram dúvida.
+
+Organize a resposta em:
+1. Resumo geral
+2. Verde: Principais conceitos compreendidos
+3. Amarelo: Pontos para revisar
+4. Vermelho: Pontos importantes e dúvidas
+5. Síntese final curta
+
+Use somente as informações fornecidas abaixo e não invente conteúdo.
+
+${sections}`;
+  }
+
+  async function generateSummaryResult(summaryData) {
+    // Ponto de integração da futura Opção B:
+    // v0.6.9 poderá enviar summaryData ao backend da Microleitura.
+    return { ok: false, status: 'not-configured', text: '' };
+  }
+
+  function openSummaryPanel(root) {
+    document.querySelectorAll('.microleitura-summary-panel').forEach(p => p.remove());
+    const summaryData = collectSummaryData(root);
+    const prompt = buildSummaryPrompt(summaryData);
+    const { labels, groups } = summaryData;
+    const panel = document.createElement('section');
+    panel.className = 'microleitura-summary-panel';
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-label','Marcações da Microleitura');
+
+    const header = document.createElement('div');
+    header.className='microleitura-summary-panel-header';
+    const title=document.createElement('strong'); title.textContent='Marcações da Microleitura';
+    const close=document.createElement('button'); close.type='button'; close.className='microleitura-summary-close';
+    close.textContent='×'; close.title='Fechar'; close.addEventListener('click',()=>panel.remove());
+    header.append(title,close); panel.appendChild(header);
+
+    const body=document.createElement('div'); body.className='microleitura-summary-panel-body';
+    let count=0;
+    MARKS.forEach(mark=>{
+      if(!groups[mark].length) return;
+      count += groups[mark].length;
+      const section=document.createElement('div'); section.className=`microleitura-summary-section microleitura-summary-${mark}`;
+      const h=document.createElement('h4'); h.textContent=`${labels[mark]} (${groups[mark].length})`; section.appendChild(h);
+      const ul=document.createElement('ul');
+      groups[mark].forEach(text=>{ const li=document.createElement('li'); li.textContent=text; ul.appendChild(li); });
+      section.appendChild(ul); body.appendChild(section);
+    });
+    if(!count){ const empty=document.createElement('p'); empty.textContent='Ainda não há marcações neste bloco.'; body.appendChild(empty); }
+    panel.appendChild(body);
+
+    const footer=document.createElement('div'); footer.className='microleitura-summary-panel-footer';
+    const copy=document.createElement('button'); copy.type='button'; copy.className='microleitura-summary-copy';
+    copy.textContent='Copiar para I.A resumir'; copy.disabled=!prompt;
+    copy.addEventListener('click',async()=>{
+      if(!prompt) return;
+      try { await navigator.clipboard.writeText(prompt); copy.textContent='Copiado!'; setTimeout(()=>copy.textContent='Copiar para I.A resumir',1800); }
+      catch(_) { window.prompt('Copie este texto e envie ao ChatGPT:',prompt); }
+    });
+    const ai=document.createElement('button');
+    ai.type='button';
+    ai.className='microleitura-summary-ai';
+    ai.textContent='Gerar com IA';
+    ai.disabled=true;
+    ai.title='Será ativado quando o backend estiver conectado.';
+    ai.dataset.microleituraAiReady='false';
+
+    const result=document.createElement('div');
+    result.className='microleitura-summary-result';
+    result.hidden=true;
+    result.setAttribute('aria-live','polite');
+
+    footer.append(copy,ai);
+    panel.appendChild(footer);
+    panel.appendChild(result);
+    document.body.appendChild(panel);
+  }
+
   function ensureProgressBar(root) {
     let bar = root.querySelector(`:scope > .${BAR_CLASS}`);
-    if (bar) return bar;
+    if (bar) {
+      makeProgressBarDraggable(bar, root);
+      return bar;
+    }
 
     bar = document.createElement('div');
     bar.className = BAR_CLASS;
@@ -386,7 +661,9 @@
       <span class="microleitura-progress-label">Microleitura</span>
       <span class="microleitura-progress-count"></span>
       <button type="button" class="microleitura-continue">Continuar</button>
+      <button type="button" class="microleitura-theme-toggle" title="Alternar cor da barra" aria-label="Alternar cor da barra">◐</button>
       <button type="button" class="microleitura-review">Revisar</button>
+      <button type="button" class="microleitura-summary">Gerar resumo</button>
     `;
 
     bar.querySelector('.microleitura-continue').addEventListener('click', (event) => {
@@ -397,6 +674,18 @@
         unread.classList.add('microleitura-pulse');
         setTimeout(() => unread.classList.remove('microleitura-pulse'), 900);
       }
+    });
+
+    const themeButton = bar.querySelector('.microleitura-theme-toggle');
+    const themeKey = 'microleitura-progress-theme';
+    chrome.storage.local.get([themeKey], (saved) => {
+      if (saved?.[themeKey] === 'blue') bar.classList.add('microleitura-progress-blue');
+    });
+    themeButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const blue = bar.classList.toggle('microleitura-progress-blue');
+      chrome.storage.local.set({ [themeKey]: blue ? 'blue' : 'light' });
     });
 
     bar.querySelector('.microleitura-review').addEventListener('click', (event) => {
@@ -421,7 +710,14 @@
       if (reviewButton) reviewButton.textContent = `Revisar ${index + 1}/${reviewChunks.length}`;
     });
 
+    bar.querySelector('.microleitura-summary').addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openSummaryPanel(root);
+    });
+
     root.insertBefore(bar, root.firstChild);
+    makeProgressBarDraggable(bar, root);
     return bar;
   }
 
@@ -561,10 +857,10 @@
     if (isEditableElement(root)) return [];
     const selector = isChatGPT()
       ? 'p, li, blockquote, h1, h2, h3, h4, h5, h6'
-      : 'p, blockquote, h1, h2, h3, h4' + (!frameContext.top || frameContext.seiDocument ? ', td, th' : '');
+      : 'p, li, blockquote, h1, h2, h3, h4' + (/(^|\\.)blogspot\\./i.test(location.hostname) ? ', div' : '') + ((/(^|\\.)google\\./i.test(location.hostname) && location.pathname === '/search') ? ', div[data-sncf], div[data-content-feature], div[data-attrid], div.VwiC3b, span' : '') + (!frameContext.top || frameContext.seiDocument ? ', td, th' : '');
     const standard = [...root.querySelectorAll(selector)].filter((el) =>
       !el.closest('nav, header, footer, aside, form, [role="navigation"], [role="tree"], [role="menu"]') &&
-      (!el.matches('td, th') || !el.querySelector('p, blockquote, h1, h2, h3, h4, table'))
+      (!el.matches('td, th') || !el.querySelector('p, li, blockquote, h1, h2, h3, h4, table'))
     );
 
     // Important: sometimes the element carrying data-message-author-role is itself
@@ -755,12 +1051,13 @@
     if (external) scheduleProcess();
   });
 
-  let lastPath = location.pathname + location.search;
+  const currentRouteKey = () => isMicrosoft365Copilot() ? location.pathname : location.pathname + location.search;
+  let lastPath = currentRouteKey();
   let lastRoots = [];
   setInterval(() => {
     const roots = getMessageRoots();
-    if (location.pathname + location.search !== lastPath || roots.length !== lastRoots.length || roots.some((root, index) => root !== lastRoots[index])) {
-      lastPath = location.pathname + location.search;
+    if (currentRouteKey() !== lastPath || roots.length !== lastRoots.length || roots.some((root, index) => root !== lastRoots[index])) {
+      lastPath = currentRouteKey();
       lastRoots = roots;
       scheduleProcess();
     }
