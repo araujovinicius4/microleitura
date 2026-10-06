@@ -1,4 +1,4 @@
-# Microleitura v0.6.0
+# Microleitura v0.6.8
 
 A v0.6.0 adiciona execução independente em frames HTTP/HTTPS, incluindo o
 documento HTML do SEI/Ebserh em `iframe#ifrArvoreHtml`. O shell do SEI e frames
