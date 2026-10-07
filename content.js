@@ -80,8 +80,10 @@
     try { frameId = window.frameElement?.id || null; } catch (_) { /* Cross-origin parent. */ }
     const sei = location.hostname === 'sei.ebserh.gov.br';
     const action = new URL(location.href).searchParams.get('acao');
-    return { top: window.top === window, frameId, sei,
-      seiDocument: sei && (frameId === 'ifrArvoreHtml' || action === 'documento_visualizar') };
+    return {
+      top: window.top === window, frameId, sei,
+      seiDocument: sei && (frameId === 'ifrArvoreHtml' || action === 'documento_visualizar')
+    };
   }
 
   const frameContext = getFrameContext();
@@ -90,7 +92,7 @@
       href: location.href, top: frameContext.top, frameId: frameContext.frameId,
       designMode: document.designMode, chunks: document.querySelectorAll(`.${CHUNK_CLASS}`).length
     });
-  }).catch(() => {});
+  }).catch(() => { });
   // The SEI shell, tree and editor routes are not reading documents.
   if (frameContext.sei && !frameContext.seiDocument) return;
   if (document.designMode.toLowerCase() === 'on' || isEditableElement(document.body)) return;
@@ -486,14 +488,14 @@
         bar.style.left = `${bounded.left}px`;
         bar.style.top = `${bounded.top}px`;
       });
-    }).catch(() => {});
+    }).catch(() => { });
 
     handle.addEventListener('dblclick', (event) => {
       event.preventDefault();
       event.stopPropagation();
       bar.style.left = '0px';
       bar.style.top = '0px';
-      chrome.storage.local.remove(positionKey).catch(() => {});
+      chrome.storage.local.remove(positionKey).catch(() => { });
     });
 
     handle.addEventListener('pointerdown', (event) => {
@@ -526,7 +528,7 @@
         last = clampProgressBarOffset(bar, root, last.left, last.top);
         bar.style.left = `${last.left}px`;
         bar.style.top = `${last.top}px`;
-        chrome.storage.local.set({ [positionKey]: last }).catch(() => {});
+        chrome.storage.local.set({ [positionKey]: last }).catch(() => { });
       };
 
       handle.addEventListener('pointermove', move);
@@ -585,9 +587,49 @@ ${sections}`;
   }
 
   async function generateSummaryResult(summaryData) {
-    // Ponto de integração da futura Opção B:
-    // v0.6.9 poderá enviar summaryData ao backend da Microleitura.
-    return { ok: false, status: 'not-configured', text: '' };
+    const prompt = buildSummaryPrompt(summaryData);
+
+    if (!prompt) {
+      return {
+        ok: false,
+        status: 'empty',
+        text: 'Não há marcações para resumir.'
+      };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:3001/api/resumo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        },
+        body: JSON.stringify({
+          texto: prompt
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          ok: false,
+          status: response.status,
+          text: data.erro || 'Não foi possível gerar o resumo.'
+        };
+      }
+
+      return {
+        ok: true,
+        status: response.status,
+        text: data.resumo || ''
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        status: 'connection-error',
+        text: 'Não foi possível conectar ao backend da Microleitura.'
+      };
+    }
   }
 
   function openSummaryPanel(root) {
@@ -597,52 +639,71 @@ ${sections}`;
     const { labels, groups } = summaryData;
     const panel = document.createElement('section');
     panel.className = 'microleitura-summary-panel';
-    panel.setAttribute('role','dialog');
-    panel.setAttribute('aria-label','Marcações da Microleitura');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Marcações da Microleitura');
 
     const header = document.createElement('div');
-    header.className='microleitura-summary-panel-header';
-    const title=document.createElement('strong'); title.textContent='Marcações da Microleitura';
-    const close=document.createElement('button'); close.type='button'; close.className='microleitura-summary-close';
-    close.textContent='×'; close.title='Fechar'; close.addEventListener('click',()=>panel.remove());
-    header.append(title,close); panel.appendChild(header);
+    header.className = 'microleitura-summary-panel-header';
+    const title = document.createElement('strong'); title.textContent = 'Marcações da Microleitura';
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'microleitura-summary-close';
+    close.textContent = '×'; close.title = 'Fechar'; close.addEventListener('click', () => panel.remove());
+    header.append(title, close); panel.appendChild(header);
 
-    const body=document.createElement('div'); body.className='microleitura-summary-panel-body';
-    let count=0;
-    MARKS.forEach(mark=>{
-      if(!groups[mark].length) return;
+    const body = document.createElement('div'); body.className = 'microleitura-summary-panel-body';
+    let count = 0;
+    MARKS.forEach(mark => {
+      if (!groups[mark].length) return;
       count += groups[mark].length;
-      const section=document.createElement('div'); section.className=`microleitura-summary-section microleitura-summary-${mark}`;
-      const h=document.createElement('h4'); h.textContent=`${labels[mark]} (${groups[mark].length})`; section.appendChild(h);
-      const ul=document.createElement('ul');
-      groups[mark].forEach(text=>{ const li=document.createElement('li'); li.textContent=text; ul.appendChild(li); });
+      const section = document.createElement('div'); section.className = `microleitura-summary-section microleitura-summary-${mark}`;
+      const h = document.createElement('h4'); h.textContent = `${labels[mark]} (${groups[mark].length})`; section.appendChild(h);
+      const ul = document.createElement('ul');
+      groups[mark].forEach(text => { const li = document.createElement('li'); li.textContent = text; ul.appendChild(li); });
       section.appendChild(ul); body.appendChild(section);
     });
-    if(!count){ const empty=document.createElement('p'); empty.textContent='Ainda não há marcações neste bloco.'; body.appendChild(empty); }
+    if (!count) { const empty = document.createElement('p'); empty.textContent = 'Ainda não há marcações neste bloco.'; body.appendChild(empty); }
     panel.appendChild(body);
 
-    const footer=document.createElement('div'); footer.className='microleitura-summary-panel-footer';
-    const copy=document.createElement('button'); copy.type='button'; copy.className='microleitura-summary-copy';
-    copy.textContent='Copiar para I.A resumir'; copy.disabled=!prompt;
-    copy.addEventListener('click',async()=>{
-      if(!prompt) return;
-      try { await navigator.clipboard.writeText(prompt); copy.textContent='Copiado!'; setTimeout(()=>copy.textContent='Copiar para I.A resumir',1800); }
-      catch(_) { window.prompt('Copie este texto e envie ao ChatGPT:',prompt); }
+    const footer = document.createElement('div'); footer.className = 'microleitura-summary-panel-footer';
+    const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'microleitura-summary-copy';
+    copy.textContent = 'Copiar para I.A resumir'; copy.disabled = !prompt;
+    copy.addEventListener('click', async () => {
+      if (!prompt) return;
+      try { await navigator.clipboard.writeText(prompt); copy.textContent = 'Copiado!'; setTimeout(() => copy.textContent = 'Copiar para I.A resumir', 1800); }
+      catch (_) { window.prompt('Copie este texto e envie ao ChatGPT:', prompt); }
     });
-    const ai=document.createElement('button');
-    ai.type='button';
-    ai.className='microleitura-summary-ai';
-    ai.textContent='Gerar com IA';
-    ai.disabled=true;
-    ai.title='Será ativado quando o backend estiver conectado.';
-    ai.dataset.microleituraAiReady='false';
+    const ai = document.createElement('button');
+    ai.type = 'button';
+    ai.className = 'microleitura-summary-ai';
+    ai.textContent = 'Gerar com IA';
+    ai.disabled = !prompt;
+    ai.title = 'Gerar resumo usando o backend da Microleitura.';
+    ai.dataset.microleituraAiReady = 'true';
 
-    const result=document.createElement('div');
-    result.className='microleitura-summary-result';
-    result.hidden=true;
-    result.setAttribute('aria-live','polite');
+    const result = document.createElement('div');
+    result.className = 'microleitura-summary-result';
+    result.hidden = true;
+    result.setAttribute('aria-live', 'polite');
 
-    footer.append(copy,ai);
+    ai.addEventListener('click', async () => {
+      ai.disabled = true;
+      ai.textContent = 'Gerando...';
+
+      result.hidden = false;
+      result.textContent = 'Gerando resumo...';
+
+      const response = await generateSummaryResult(summaryData);
+
+      if (response.ok) {
+        result.textContent = response.text;
+      } else {
+        result.textContent = response.text || 'Não foi possível gerar o resumo.';
+      }
+
+      ai.disabled = false;
+      ai.textContent = 'Gerar com IA';
+    });
+
+    footer.append(copy, ai);
     panel.appendChild(footer);
     panel.appendChild(result);
     document.body.appendChild(panel);
@@ -846,7 +907,7 @@ ${sections}`;
     let length = 0;
     for (const node of el.childNodes) {
       if (node.nodeType === Node.TEXT_NODE) length += normalize(node.nodeValue).length;
-      if (node.nodeType === Node.ELEMENT_NODE && ['SPAN','STRONG','EM','A','CODE'].includes(node.tagName)) {
+      if (node.nodeType === Node.ELEMENT_NODE && ['SPAN', 'STRONG', 'EM', 'A', 'CODE'].includes(node.tagName)) {
         length += normalize(node.textContent).length;
       }
     }
@@ -914,7 +975,7 @@ ${sections}`;
       // use the same sentence boundaries. Never unwrap or move an editor.
       const blockText = readableIdentityText(block);
       if (block.hasAttribute(PROCESSED) && (blockTexts.get(block) !== blockText || uncoveredTextNodes(block).length > 0) &&
-          !block.querySelector(EDITABLE_SELECTOR) && !containsActiveEditor(block)) {
+        !block.querySelector(EDITABLE_SELECTOR) && !containsActiveEditor(block)) {
         block.querySelectorAll('.' + CHUNK_CLASS).forEach((span) => span.replaceWith(...span.childNodes));
         block.normalize();
         block.removeAttribute(PROCESSED);
