@@ -665,10 +665,10 @@ ${sections}`;
 
     const footer = document.createElement('div'); footer.className = 'microleitura-summary-panel-footer';
     const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'microleitura-summary-copy';
-    copy.textContent = 'Copiar para I.A resumir'; copy.disabled = !prompt;
+    copy.textContent = 'Copiar Prompt Sem Integração com I.A'; copy.disabled = !prompt;
     copy.addEventListener('click', async () => {
       if (!prompt) return;
-      try { await navigator.clipboard.writeText(prompt); copy.textContent = 'Copiado!'; setTimeout(() => copy.textContent = 'Copiar para I.A resumir', 1800); }
+      try { await navigator.clipboard.writeText(prompt); copy.textContent = 'Copiado!'; setTimeout(() => copy.textContent = 'Copiar Prompt Sem Integração com I.A', 1800); }
       catch (_) { window.prompt('Copie este texto e envie ao ChatGPT:', prompt); }
     });
     const ai = document.createElement('button');
